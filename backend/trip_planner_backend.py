@@ -15,6 +15,36 @@ load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
 serpapi_key = os.getenv('serpAPI_API_KEY')
 
+#utility functions
+
+
+    # Loop through the flight dictionary
+
+def get_complete_dictionary(flights, hotels):
+    # Initialize the complete dictionary
+    complete_dict = {}
+
+    # Create a new hotels dictionary with stripped keys
+    hotels_stripped = {key.strip(): value for key, value in hotels.items()}
+
+    # Loop through the flight dictionary
+    for destination, flight_details in flights.items():
+        # Strip extra spaces from destination name if any
+        destination_stripped = destination.strip()
+
+        # Check if the same destination exists in the hotels dictionary
+        if destination_stripped in hotels_stripped:
+            # Copy flight details and remove 'remaining_budget'
+            flight_info = flight_details.copy()
+            flight_info.pop('remaining_budget', None)  # Remove 'remaining_budget' from this specific flight details
+
+            # Merge flight details and hotel details
+            complete_dict[destination_stripped] = {
+                **flight_info,
+                **hotels_stripped[destination_stripped]
+            }
+
+    return complete_dict
 
 #serAPI functions
 def get_flights(destinations, start_date, end_date, budget):
@@ -39,7 +69,9 @@ def get_flights(destinations, start_date, end_date, budget):
             cheapest_flight = min(best_flights, key=lambda x: x['price'])
             flight_cost = cheapest_flight['price']
             is_direct_flight = 'no' if cheapest_flight['layovers'] else 'yes'
-            total_duration = cheapest_flight['total_duration']
+            total_minutes = cheapest_flight['total_duration']
+            hours, minutes = divmod(total_minutes, 60)
+            total_duration = '{:02}:{:02}'.format(hours, minutes)
             flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
             departure_airport = cheapest_flight['flights'][0]['departure_airport']['id']
             destination_airport = cheapest_flight['flights'][-1]['arrival_airport']['id']
@@ -50,7 +82,7 @@ def get_flights(destinations, start_date, end_date, budget):
                 "is_direct_flight": is_direct_flight,
                 "total_duration": total_duration,
                 "flight_numbers": flight_numbers,
-                "total_price": flight_cost,
+                "total_flight_price": flight_cost,
                 "remaining_budget": budget - flight_cost
             }
         else:
@@ -61,7 +93,7 @@ def get_flights(destinations, start_date, end_date, budget):
                 "is_direct_flight": "no",
                 "total_duration": None,
                 "flight_numbers": [],
-                "total_price": None,
+                "total_flight_price": None,
                 "remaining_budget": budget
             }
 
@@ -107,7 +139,7 @@ def get_hotels(flights, start_date, end_date):
                 "hotel_name": hotel_name,
                 "hotel_address": hotel_address,
                 "hotel_rating": hotel_rating,
-                "total_price": hotel_cost,
+                "total_hotel_price": hotel_cost,
                 "remaining_budget": remaining_budget - hotel_cost
             }
         else:
@@ -116,7 +148,7 @@ def get_hotels(flights, start_date, end_date):
                 "hotel_name": None,
                 "hotel_address": None,
                 "hotel_rating": None,
-                "total_price": None,
+                "total_hotel_price": None,
                 "remaining_budget": remaining_budget
             }
 
@@ -339,9 +371,9 @@ if __name__ == "__main__":
     destinations = get_options(api_key, start_date, end_date, budget, trip_type)
     print("Found destinations:", destinations)
     flight_results = get_flights(destinations, start_date, end_date, budget)
-    print("Flights:", flight_results)
     hotels = get_hotels(flight_results, start_date, end_date)
-    print("Hotels:", hotels)
+    complete_dict = get_complete_dictionary(flight_results, hotels)
+    print("Complete dictionary:", complete_dict)
     chosen_location = destinations[0] #just for now, later will get user input
     # daily_plan = get_daily_plan(chosen_location, start_date, end_date)
     # print("Daily plan:", daily_plan)

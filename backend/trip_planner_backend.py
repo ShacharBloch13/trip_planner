@@ -17,7 +17,7 @@ serpapi_key = os.getenv('serpAPI_API_KEY')
 
 
 #serAPI functions
-def get_flights(destinations, start_date, end_date, budget, api_key):
+def get_flights(destinations, start_date, end_date, budget):
     flight_results = {}
     for destination in destinations:
         params = {
@@ -66,6 +66,57 @@ def get_flights(destinations, start_date, end_date, budget, api_key):
             }
 
     return flight_results
+
+def get_hotels(flights, start_date, end_date):
+
+    hotel_results = {}
+    for destination, flight_details in flights.items():
+        remaining_budget = flight_details['remaining_budget']
+        params = {
+            "engine": "google_hotels",
+            "q": f"{destination.strip()} resorts",  # Search for resorts
+            "vacation_rentals": "true",
+            "check_in_date": start_date,
+            "check_out_date": end_date,
+            "adults": "2",
+            "currency": "USD",
+            "gl": "il",  # Adjusted for Israel, adjust as needed
+            "hl": "en",
+            "api_key": serpapi_key,
+            "max_price": str(remaining_budget)
+        }
+        
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        
+        properties = results.get('properties', [])  # Get the list of properties
+
+        if properties:
+            # Finding the most expensive hotel within the budget
+            most_expensive_hotel = max(properties, key=lambda x: x.get('total_rate', {}).get('extracted_lowest', 0))
+            hotel_cost = most_expensive_hotel.get('total_rate', {}).get('extracted_lowest', 0)
+            hotel_name = most_expensive_hotel.get('name', 'Unknown')
+            hotel_address = most_expensive_hotel.get('address', 'No address provided')
+            hotel_rating = most_expensive_hotel.get('overall_rating', 'No rating')
+
+            hotel_results[destination] = {
+                "hotel_name": hotel_name,
+                "hotel_address": hotel_address,
+                "hotel_rating": hotel_rating,
+                "total_price": hotel_cost,
+                "remaining_budget": remaining_budget - hotel_cost
+            }
+        else:
+            print(f"No hotels found for {destination}.")
+            hotel_results[destination] = {
+                "hotel_name": None,
+                "hotel_address": None,
+                "hotel_rating": None,
+                "total_price": None,
+                "remaining_budget": remaining_budget
+            }
+
+    return hotel_results
 
 # openAI functions
 
@@ -277,17 +328,19 @@ if __name__ == "__main__":
     api_key = os.getenv('TRIP_PLANNER_API_KEY')
     start_date = '2024-07-01'
     end_date = '2024-07-15'
-    budget = 3000
+    budget = 10000 #for debugging purposes
     trip_type = 'beach'
     
-    print(api_key)
+    
     destinations = get_options(api_key, start_date, end_date, budget, trip_type)
     print("Found destinations:", destinations)
-    flight_results = get_flights(destinations, start_date, end_date, budget, serpapi_key)
+    flight_results = get_flights(destinations, start_date, end_date, budget)
     print("Flights:", flight_results)
-    chosen_location = destinations[0]
-    daily_plan = get_daily_plan(chosen_location, start_date, end_date)
-    print("Daily plan:", daily_plan)
+    hotels = get_hotels(flight_results, start_date, end_date)
+    print("Hotels:", hotels)
+    chosen_location = destinations[0] #just for now, later will get user input
+    # daily_plan = get_daily_plan(chosen_location, start_date, end_date)
+    # print("Daily plan:", daily_plan)
     # image_urls = get_dalle_image(chosen_location, daily_plan)
     # print("Image URLs:", image_urls)
 

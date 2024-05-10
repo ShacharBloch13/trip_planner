@@ -72,6 +72,7 @@ def get_hotels(flights, start_date, end_date):
     hotel_results = {}
     for destination, flight_details in flights.items():
         remaining_budget = flight_details['remaining_budget']
+        duration = (datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')).days # may not need this
         params = {
             "engine": "google_hotels",
             "q": f"{destination.strip()} resorts",  # Search for resorts
@@ -88,12 +89,15 @@ def get_hotels(flights, start_date, end_date):
         
         search = GoogleSearch(params)
         results = search.get_dict()
-        
         properties = results.get('properties', [])  # Get the list of properties
+        affordable_hotels = [hotel for hotel in properties if hotel.get('total_rate', {}).get('extracted_lowest', 0) <= remaining_budget]
 
         if properties:
             # Finding the most expensive hotel within the budget
-            most_expensive_hotel = max(properties, key=lambda x: x.get('total_rate', {}).get('extracted_lowest', 0))
+            if affordable_hotels:
+                most_expensive_hotel = max(affordable_hotels, key=lambda x: x.get('total_rate', {}).get('extracted_lowest', 0))
+            else:
+                most_expensive_hotel = None
             hotel_cost = most_expensive_hotel.get('total_rate', {}).get('extracted_lowest', 0)
             hotel_name = most_expensive_hotel.get('name', 'Unknown')
             hotel_address = most_expensive_hotel.get('address', 'No address provided')
@@ -328,7 +332,7 @@ if __name__ == "__main__":
     api_key = os.getenv('TRIP_PLANNER_API_KEY')
     start_date = '2024-07-01'
     end_date = '2024-07-15'
-    budget = 10000 #for debugging purposes
+    budget = 20000 
     trip_type = 'beach'
     
     

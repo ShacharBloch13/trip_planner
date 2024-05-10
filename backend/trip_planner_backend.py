@@ -23,7 +23,7 @@ def get_flights(destinations, start_date, end_date, budget, api_key):
         params = {
             "engine": "google_flights",
             "departure_id": "TLV",  # Assuming 'TLV' is the ID for Tel Aviv Airport
-            "arrival_id": get_airport_code(destination),  # This needs to be the airport code
+            "arrival_id": get_airport_code(destination),  # get_airport_code() is a function that returns the airport code for a given location
             "outbound_date": start_date,
             "return_date": end_date,
             "currency": "USD",
@@ -31,23 +31,37 @@ def get_flights(destinations, start_date, end_date, budget, api_key):
             "api_key": serpapi_key
             
         }
-        print("Params:", params) # Debugging
         search = GoogleSearch(params)
         results = search.get_dict()
         best_flights = results.get('best_flights', [])
 
         if best_flights:
-            # Sorting to find the cheapest round trip flight
             cheapest_flight = min(best_flights, key=lambda x: x['price'])
             flight_cost = cheapest_flight['price']
+            is_direct_flight = 'no' if cheapest_flight['layovers'] else 'yes'
+            total_duration = cheapest_flight['total_duration']
+            flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
+            departure_airport = cheapest_flight['flights'][0]['departure_airport']['id']
+            destination_airport = cheapest_flight['flights'][-1]['arrival_airport']['id']
+
             flight_results[destination] = {
-                "flight": cheapest_flight,
+                "depart_airport_code": departure_airport,
+                "destination_airport_code": destination_airport,
+                "is_direct_flight": is_direct_flight,
+                "total_duration": total_duration,
+                "flight_numbers": flight_numbers,
+                "total_price": flight_cost,
                 "remaining_budget": budget - flight_cost
             }
         else:
             print(f"No flights found for {destination}.")
             flight_results[destination] = {
-                "flight": None,
+                "depart_airport_code": None,
+                "destination_airport_code": None,
+                "is_direct_flight": "no",
+                "total_duration": None,
+                "flight_numbers": [],
+                "total_price": None,
                 "remaining_budget": budget
             }
 

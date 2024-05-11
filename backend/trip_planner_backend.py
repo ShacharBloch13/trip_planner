@@ -3,14 +3,38 @@ from dotenv import load_dotenv
 import json
 import os
 from openai import OpenAI
-from datetime import datetime
+from datetime import datetime, timedelta
 from serpapi import GoogleSearch
 
 load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
 serpapi_key = os.getenv('serpAPI_API_KEY_2')
+class_api_key = os.getenv('CLASS_OPENAI_API_KEY')
 
 #utility functions
+
+def get_next_3_days(date_str): #To get the return flights data
+    # Assume date_str is in the format 'YYYY-MM-DD'
+    year, month, day = map(int, date_str.split('-'))
+    
+    # Basic date adjustment for 3 days forward
+    day += 3
+    
+    # Days in each month accounting for leap years
+    # Note: This does not perfectly account for leap years but assumes February always has 28 days
+    month_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    
+    # Adjust for end of month
+    if day > month_days[month - 1]:  # Check if the day exceeds the number of days in the month
+        day -= month_days[month - 1]  # Adjust day to start of next month
+        month += 1  # Increment the month
+        
+        if month > 12:  # Adjust for end of year
+            month = 1
+            year += 1
+            
+    # Format the new date as 'YYYY-MM-DD'
+    return f"{year}-{month:02}-{day:02}"
 
 
 
@@ -49,7 +73,7 @@ def get_complete_dictionary(flights, hotels, return_flights):
 
             # Merge flight details and hotel details
             complete_dict[destination_stripped] = {
-                **flight_info,
+                **flight_info_extended,
                 **hotels_stripped[destination_stripped]
             }
 
@@ -108,7 +132,7 @@ def get_flights(destinations, start_date, end_date, budget):
 
     return flight_results
 
-# def get_return_flights(destinations, end_date):
+def get_return_flights(destinations, end_date):
     return_flight_results = {}
     for destination in destinations:
         params = {
@@ -116,38 +140,32 @@ def get_flights(destinations, start_date, end_date, budget):
             "departure_id": get_airport_code(destination),  
             "arrival_id": "TLV",  
             "outbound_date": end_date,
+            "return_date": get_next_3_days(end_date),
             "currency": "USD",
             "hl": "en",
             "api_key": serpapi_key
         }
-        try:
-            response = requests.get('https://api.serpapi.com/search', params=params)
-            response.raise_for_status()  # Raises an HTTPError for bad responses
-            results = response.json()
-            best_flights = results.get('best_flights', [])
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        best_flights = results.get('best_flights', [])
 
-            if best_flights:
-                cheapest_flight = min(best_flights, key=lambda x: x['price'])
-                return_flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
-                total_minutes = cheapest_flight['total_duration']
-                hours, minutes = divmod(total_minutes, 60)
-                total_return_duration = '{:02}:{:02}'.format(hours, minutes)
-                return_flight_results[destination] = {
-                    "return_flight_numbers": return_flight_numbers,
-                    "total_return_duration": total_return_duration
-                }
-            else:
-                print(f"No flights found for {destination}.")
-                return_flight_results[destination] = {
-                    "return_flight_numbers": [],
-                    "total_return_duration": None
-                }
-        except requests.RequestException as e:
-            print(f"Request error for {destination}: {str(e)}")
-        except json.JSONDecodeError:
-            print(f"JSON decode error for {destination}")
-        except KeyError as e:
-            print(f"Key error: {destination} - {str(e)}")
+        if best_flights:
+            cheapest_flight = min(best_flights, key=lambda x: x['price'])
+            return_flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
+            total_minutes = cheapest_flight['total_duration']
+            hours, minutes = divmod(total_minutes, 60)
+            total_return_duration = '{:02}:{:02}'.format(hours, minutes)
+            return_flight_results[destination] = {
+                "return_flight_numbers": return_flight_numbers,
+                "total_return_duration": total_return_duration
+            }
+        else:
+            print(f"No flights found from {destination}.")
+            return_flight_results[destination] = {
+                "return_flight_numbers": [],
+                "total_return_duration": None
+            }
+
 
     return return_flight_results
 
@@ -157,7 +175,6 @@ def get_hotels(flights, start_date, end_date):
     hotel_results = {}
     for destination, flight_details in flights.items():
         remaining_budget = flight_details['remaining_budget']
-        duration = (datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')).days # may not need this
         params = {
             "engine": "google_hotels",
             "q": f"{destination.strip()} resorts",  # Search for resorts
@@ -230,7 +247,7 @@ def get_airport_code(location):
 
     try:
         response = requests.post(url, headers=headers, data=body)
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        #response.raise_for_status()  # Raises an HTTPError for bad responses
         destinations_str = response.json()['choices'][0]['message']['content']
         destinations = destinations_str.split('_')
         return destinations
@@ -263,7 +280,7 @@ def get_options(api_key, start_date, end_date, budget, trip_type):
 
     try:
         response = requests.post(url, headers=headers, data=body)
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        #response.raise_for_status()  # Raises an HTTPError for bad responses
         destinations_str = response.json()['choices'][0]['message']['content']
         destinations = destinations_str.split('_')
         return destinations
@@ -296,7 +313,7 @@ def get_daily_plan(chosen_location, start_date, end_date):
     })
     try:
         response = requests.post(url, headers=headers, data=body)
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        #response.raise_for_status()  # Raises an HTTPError for bad responses
         daily_plan = response.json()['choices'][0]['message']['content']
         return daily_plan
     except requests.exceptions.HTTPError as http_err:
@@ -313,7 +330,7 @@ def get_dalle_image(chosen_location, daily_plan):
         url = 'https://api.openai.com/v1/images/generations'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}'
+            'Authorization': f'Bearer {class_api_key}'
         }
         data= {
             "model": "dall-e-3",
@@ -333,25 +350,68 @@ def get_dalle_image(chosen_location, daily_plan):
 
 
 # Main function to test the APIs
-if __name__ == "__main__":
-    api_key = os.getenv('TRIP_PLANNER_API_KEY')
-    start_date = '2024-07-01'
-    end_date = '2024-07-08'
-    budget = 20000 
-    trip_type = 'beach'
+# if __name__ == "__main__":
+#     api_key = os.getenv('TRIP_PLANNER_API_KEY')
+#     start_date = '2024-07-01'
+#     end_date = '2024-07-08'
+#     budget = 20000 
+#     trip_type = 'beach'
     
-    
+#     print("Getting options...")
+#     destinations = get_options(api_key, start_date, end_date, budget, trip_type)
+#     print("Found destinations:", destinations)
+#     print("Getting flights...")
+#     flight_results = get_flights(destinations, start_date, end_date, budget)
+#     print("getting return flights...")
+#     return_flights = get_return_flights(destinations, end_date)
+#     print("Getting hotels...")
+#     hotels = get_hotels(flight_results, start_date, end_date)
+#     print("getting complete dictionary...")
+#     complete_dict = get_complete_dictionary(flight_results, hotels, return_flights)
+#     print("Complete dictionary:", complete_dict)
+#     chosen_location = destinations[0] #just for now, later will get user input
+#     daily_plan = get_daily_plan(chosen_location, start_date, end_date)
+#     print("Daily plan:", daily_plan)
+#     image_urls = get_dalle_image(chosen_location, daily_plan)
+
+def main():
+    print("Welcome to the Trip Planner!")
+    # Step 1: User inputs
+    start_date = input("Please enter the start date (YYYY-MM-DD): ")
+    end_date = input("Please enter the end date (YYYY-MM-DD): ")
+    budget = int(input("Please enter your budget (US$): "))
+    trip_type = input("Please enter the type of trip (e.g., adventure, relaxation, cultural): ")
+
     destinations = get_options(api_key, start_date, end_date, budget, trip_type)
-    print("Found destinations:", destinations)
-    flight_results = get_flights(destinations, start_date, end_date, budget)
-    return_flights = get_return_flights(destinations, end_date)
-    hotels = get_hotels(flight_results, start_date, end_date)
-    complete_dict = get_complete_dictionary(flight_results, hotels, return_flights)
-    print("Complete dictionary:", complete_dict)
-    chosen_location = destinations[0] #just for now, later will get user input
-    daily_plan = get_daily_plan(chosen_location, start_date, end_date)
-    print("Daily plan:", daily_plan)
-    image_urls = get_dalle_image(chosen_location, daily_plan)
+    return_flights = get_return_flights(destinations, end_date) # for debugging
+    flights = get_flights(destinations, start_date, end_date, budget)
+    hotels = get_hotels(flights, start_date, end_date)
+    complete_dict = get_complete_dictionary(flights, hotels, return_flights)
+    print("Here are a few options:")
+    print(complete_dict)
 
+    # Step 4: Asking user to choose their favorite trip
+    destinations = list(complete_dict.keys())
+    for idx, destination in enumerate(destinations, start=1):
+        print(f"{idx}. {destination}")
 
+    choice = int(input("Which trip is your favorite? (choose a number between 1-5): "))
+    if 1 <= choice <= len(destinations):
+            chosen_destination = destinations[choice - 1]
+    else:
+        print("Invalid choice. Please run the program again and select a valid option.")
+        return
+
+    # Step 5: Display daily plan and generate images
+    daily_plan = get_daily_plan(chosen_destination, start_date, end_date)
+    print("Here is a suggested daily plan:")
+    print(daily_plan)
+
+    # Assuming get_dalle_images exists
+    print("Click on the links to see some cool images to show how your trip may look like:")
+    get_dalle_image(chosen_destination, daily_plan)
+
+if __name__ == "__main__":
+    main()
+    
     

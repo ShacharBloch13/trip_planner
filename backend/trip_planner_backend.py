@@ -3,24 +3,18 @@ from dotenv import load_dotenv
 import json
 import os
 from openai import OpenAI
-import tkinter as tk
-from PIL import Image, ImageTk
-from io import BytesIO
-import base64
 from datetime import datetime
-import openai
 from serpapi import GoogleSearch
 
 load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
-serpapi_key = os.getenv('serpAPI_API_KEY')
+serpapi_key = os.getenv('serpAPI_API_KEY_2')
 
 #utility functions
 
 
-    # Loop through the flight dictionary
 
-def get_complete_dictionary(flights, hotels):
+def get_complete_dictionary(flights, hotels, return_flights):
     # Initialize the complete dictionary
     complete_dict = {}
 
@@ -37,6 +31,21 @@ def get_complete_dictionary(flights, hotels):
             # Copy flight details and remove 'remaining_budget'
             flight_info = flight_details.copy()
             flight_info.pop('remaining_budget', None)  # Remove 'remaining_budget' from this specific flight details
+            return_info = return_flights.get(destination_stripped, {})
+            return_flight_numbers = return_info.get('return_flight_numbers', [])
+            total_return_duration = return_info.get('total_return_duration', 0)
+
+            flight_info_extended = {
+                'depart_airport_code': flight_info['depart_airport_code'],
+                'destination_airport_code': flight_info['destination_airport_code'],
+                'is_direct_flight': flight_info['is_direct_flight'],
+                'flight_numbers': flight_info['flight_numbers'],
+                'total_duration': flight_info['total_duration'],
+                'return_flight_numbers': return_flight_numbers,
+                'total_return_duration': total_return_duration,
+                'total_flight_price': flight_info['total_flight_price']
+            }
+            
 
             # Merge flight details and hotel details
             complete_dict[destination_stripped] = {
@@ -71,8 +80,8 @@ def get_flights(destinations, start_date, end_date, budget):
             is_direct_flight = 'no' if cheapest_flight['layovers'] else 'yes'
             total_minutes = cheapest_flight['total_duration']
             hours, minutes = divmod(total_minutes, 60)
+            Departures_flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
             total_duration = '{:02}:{:02}'.format(hours, minutes)
-            flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
             departure_airport = cheapest_flight['flights'][0]['departure_airport']['id']
             destination_airport = cheapest_flight['flights'][-1]['arrival_airport']['id']
 
@@ -81,7 +90,7 @@ def get_flights(destinations, start_date, end_date, budget):
                 "destination_airport_code": destination_airport,
                 "is_direct_flight": is_direct_flight,
                 "total_duration": total_duration,
-                "flight_numbers": flight_numbers,
+                "flight_numbers": Departures_flight_numbers,
                 "total_flight_price": flight_cost,
                 "remaining_budget": budget - flight_cost
             }
@@ -98,6 +107,50 @@ def get_flights(destinations, start_date, end_date, budget):
             }
 
     return flight_results
+
+# def get_return_flights(destinations, end_date):
+    return_flight_results = {}
+    for destination in destinations:
+        params = {
+            "engine": "google_flights",
+            "departure_id": get_airport_code(destination),  
+            "arrival_id": "TLV",  
+            "outbound_date": end_date,
+            "currency": "USD",
+            "hl": "en",
+            "api_key": serpapi_key
+        }
+        try:
+            response = requests.get('https://api.serpapi.com/search', params=params)
+            response.raise_for_status()  # Raises an HTTPError for bad responses
+            results = response.json()
+            best_flights = results.get('best_flights', [])
+
+            if best_flights:
+                cheapest_flight = min(best_flights, key=lambda x: x['price'])
+                return_flight_numbers = [flight['flight_number'] for flight in cheapest_flight['flights']]
+                total_minutes = cheapest_flight['total_duration']
+                hours, minutes = divmod(total_minutes, 60)
+                total_return_duration = '{:02}:{:02}'.format(hours, minutes)
+                return_flight_results[destination] = {
+                    "return_flight_numbers": return_flight_numbers,
+                    "total_return_duration": total_return_duration
+                }
+            else:
+                print(f"No flights found for {destination}.")
+                return_flight_results[destination] = {
+                    "return_flight_numbers": [],
+                    "total_return_duration": None
+                }
+        except requests.RequestException as e:
+            print(f"Request error for {destination}: {str(e)}")
+        except json.JSONDecodeError:
+            print(f"JSON decode error for {destination}")
+        except KeyError as e:
+            print(f"Key error: {destination} - {str(e)}")
+
+    return return_flight_results
+
 
 def get_hotels(flights, start_date, end_date):
 
@@ -235,7 +288,7 @@ def get_daily_plan(chosen_location, start_date, end_date):
              'content': 'You are an experienced trip-planner agent. You need to give a customer a daily plan for their trip to a specific location, based on the information the customer provided for you. Return a string of the daily plan. Just specify what he should do on every day, dont add any greetings etc.'
              },
             {'role': 'user',
-             'content': f'I am going to {chosen_location} from {start_date} to {end_date}. Can you give me a daily plan for my trip?'
+             'content': f'I am going to {chosen_location} from {start_date} to {end_date}. Can you give me a daily plan for my trip? I want a detailed plan for each day. no need to go hour by hour, just in a sentence what we should do that day'
             }
         ],
         'model': 'gpt-3.5-turbo',
@@ -254,116 +307,36 @@ def get_daily_plan(chosen_location, start_date, end_date):
     except Exception as err:
         print(f"An error occurred planning a daily plan: {err}")
 
-#def get_dalle_image(chosen_location, daily_plan):
-#     my_prompt = f'An artistic image of {chosen_location} depicting activities such as {daily_plan}'
-#     client = OpenAI()
-#     url = 'https://api.openai.com/v1/images/generations'
-#     prompt = {
-#         'subject': f'An artistic image of {chosen_location} depicting activities such as {daily_plan}',
-#         'style': 'dalle'
-#     }
-#     image_params ={
-#         'model': 'dall-e-2', #save money
-#         'n': 4,
-#         'size': '1024x1024',
-#         'prompt': prompt,
-#         'user': 'Shachar Bloch'
-#     }
+def get_dalle_image(chosen_location, daily_plan):
+    for i in range(5):
+    
+        url = 'https://api.openai.com/v1/images/generations'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {api_key}'
+        }
+        data= {
+            "model": "dall-e-3",
+            "prompt": f"An image of {chosen_location} with the following daily plan: {daily_plan}",
+            "n": 1,
+            "size": "1024x1024"
 
-#     image_params.update({"response_format": "b64_json"})
+        }
 
-#     try:
-#         images_response = client.images.generate(**image_params)
-#     except openai.APIConnectionError as e:
-#         print("Server connection error: {e.__cause__}")  # from httpx.
-#         raise
-#     except openai.RateLimitError as e:
-#         print(f"OpenAI RATE LIMIT error {e.status_code}: (e.response)")
-#         raise
-#     except openai.APIStatusError as e:
-#         print(f"OpenAI STATUS error {e.status_code}: (e.response)")
-#         raise
-#     except openai.BadRequestError as e:
-#         print(f"OpenAI BAD REQUEST error {e.status_code}: (e.response)")
-#         raise
-#     except Exception as e:
-#         print(f"An unexpected error occurred: {e}")
-#         raise
+        response = requests.post(url, headers=headers, data=json.dumps(data))
 
-#     # make a file name prefix from date-time of response
-#     images_dt = datetime.utcfromtimestamp(images_response.created)
-#     img_filename = images_dt.strftime('DALLE-%Y%m%d_%H%M%S')  # like 'DALLE-20231111_144356'
-
-
-#     # get out all the images in API return, whether url or base64
-#     # note the use of pydantic "model.data" style reference and its model_dump() method
-#     image_url_list = []
-#     image_data_list = []
-#     for image in images_response.data:
-#         image_url_list.append(image.model_dump()["url"])
-#         image_data_list.append(image.model_dump()["b64_json"])
-
-#     # Initialize an empty list to store the Image objects
-#     image_objects = []
-
-#     # Check whether lists contain urls that must be downloaded or b64_json images
-#     if image_url_list and all(image_url_list):
-#         # Download images from the urls
-#         for i, url in enumerate(image_url_list):
-#             while True:
-#                 try:
-#                     print(f"getting URL: {url}")
-#                     response = requests.get(url)
-#                     response.raise_for_status()  # Raises stored HTTPError, if one occurred.
-#                 except requests.HTTPError as e:
-#                     print(f"Failed to download image from {url}. Error: {e.response.status_code}")
-#                     retry = input("Retry? (y/n): ")  # ask script user if image url is bad
-#                     if retry.lower() in ["n", "no"]:  # could wait a bit if not ready
-#                         raise
-#                     else:
-#                         continue
-#                 break
-#             image_objects.append(Image.open(BytesIO(response.content)))  # Append the Image object to the list
-#             image_objects[i].save(f"{img_filename}_{i}.png")
-#             print(f"{img_filename}_{i}.png was saved")
-#     elif image_data_list and all(image_data_list):  # if there is b64 data
-#         # Convert "b64_json" data to png file
-#         for i, data in enumerate(image_data_list):
-#             image_objects.append(Image.open(BytesIO(base64.b64decode(data))))  # Append the Image object to the list
-#             image_objects[i].save(f"{img_filename}_{i}.png")
-#             print(f"{img_filename}_{i}.png was saved")
-#     else:
-#         print("No image data was obtained. Maybe bad code?")
-
-#     ## -- extra fun: pop up some thumbnails in your GUI if you want to see what was saved
-
-#     if image_objects:
-#         # Create a new window for each image
-#         for i, img in enumerate(image_objects):
-#             # Resize image if necessary
-#             if img.width > 512 or img.height > 512:
-#                 img.thumbnail((512, 512))  # Resize while keeping aspect ratio
-
-#             # Create a new tkinter window
-#             window = tk.Tk()
-#             window.title(f"Image {i}")
-
-#             # Convert PIL Image object to PhotoImage object
-#             tk_image = ImageTk.PhotoImage(img)
-
-#             # Create a label and add the image to it
-#             label = tk.Label(window, image=tk_image)
-#             label.pack()
-
-#             # Run the tkinter main loop - this will block the script until images are closed
-#             window.mainloop()
+        if response.status_code == 200:
+            result = response.json()
+            print("Generated image URL:", result['data'][0]['url'])
+        else:
+            print("Error:", response.status_code, response.text)
 
 
 # Main function to test the APIs
 if __name__ == "__main__":
     api_key = os.getenv('TRIP_PLANNER_API_KEY')
     start_date = '2024-07-01'
-    end_date = '2024-07-15'
+    end_date = '2024-07-08'
     budget = 20000 
     trip_type = 'beach'
     
@@ -371,13 +344,14 @@ if __name__ == "__main__":
     destinations = get_options(api_key, start_date, end_date, budget, trip_type)
     print("Found destinations:", destinations)
     flight_results = get_flights(destinations, start_date, end_date, budget)
+    return_flights = get_return_flights(destinations, end_date)
     hotels = get_hotels(flight_results, start_date, end_date)
-    complete_dict = get_complete_dictionary(flight_results, hotels)
+    complete_dict = get_complete_dictionary(flight_results, hotels, return_flights)
     print("Complete dictionary:", complete_dict)
     chosen_location = destinations[0] #just for now, later will get user input
-    # daily_plan = get_daily_plan(chosen_location, start_date, end_date)
-    # print("Daily plan:", daily_plan)
-    # image_urls = get_dalle_image(chosen_location, daily_plan)
-    # print("Image URLs:", image_urls)
+    daily_plan = get_daily_plan(chosen_location, start_date, end_date)
+    print("Daily plan:", daily_plan)
+    image_urls = get_dalle_image(chosen_location, daily_plan)
+
 
     

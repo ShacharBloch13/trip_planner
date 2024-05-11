@@ -13,12 +13,12 @@ class_api_key = os.getenv('CLASS_OPENAI_API_KEY')
 
 #utility functions
 
-def get_next_3_days(date_str): #To get the return flights data
+def get_next_7_days(date_str): #To get the return flights data
     # Assume date_str is in the format 'YYYY-MM-DD'
     year, month, day = map(int, date_str.split('-'))
     
     # Basic date adjustment for 3 days forward
-    day += 3
+    day += 7
     
     # Days in each month accounting for leap years
     # Note: This does not perfectly account for leap years but assumes February always has 28 days
@@ -140,7 +140,7 @@ def get_return_flights(destinations, end_date):
             "departure_id": get_airport_code(destination),  
             "arrival_id": "TLV",  
             "outbound_date": end_date,
-            "return_date": get_next_3_days(end_date),
+            "return_date": get_next_7_days(end_date),
             "currency": "USD",
             "hl": "en",
             "api_key": serpapi_key
@@ -330,7 +330,7 @@ def get_dalle_image(chosen_location, daily_plan):
         url = 'https://api.openai.com/v1/images/generations'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {class_api_key}'
+            'Authorization': f'Bearer {class_api_key}' # I did a few with my api key but Im cheap
         }
         data= {
             "model": "dall-e-3",

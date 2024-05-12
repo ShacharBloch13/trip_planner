@@ -8,7 +8,7 @@ from serpapi import GoogleSearch
 
 load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
-serpapi_key = os.getenv('serpAPI_API_KEY_2')
+serpapi_key = os.getenv('serpAPI_API_KEY_CHENNY')
 class_api_key = os.getenv('CLASS_OPENAI_API_KEY')
 
 #utility functions
@@ -325,28 +325,31 @@ def get_daily_plan(chosen_location, start_date, end_date):
         print(f"An error occurred planning a daily plan: {err}")
 
 def get_dalle_image(chosen_location, daily_plan):
-    for i in range(5):
-    
+    image_urls = []  # List to store the URLs of generated images
+    for i in range(4):  # Generate 4 images
         url = 'https://api.openai.com/v1/images/generations'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {class_api_key}' # I did a few with my api key but Im cheap
+            'Authorization': f'Bearer {class_api_key}'  # Use the correct API key variable
         }
-        data= {
+        data = {
             "model": "dall-e-3",
             "prompt": f"An image of {chosen_location} with the following daily plan: {daily_plan}",
             "n": 1,
             "size": "1024x1024"
-
         }
 
         response = requests.post(url, headers=headers, data=json.dumps(data))
 
         if response.status_code == 200:
             result = response.json()
-            print("Generated image URL:", result['data'][0]['url'])
+            image_urls.append(result['data'][0]['url'])  # Add the URL to the list
         else:
-            print("Error:", response.status_code, response.text)
+            print(f"Error: {response.status_code} {response.text}")
+            image_urls.append(f"Error: {response.status_code}")  # Optional: Add error info
+
+    return image_urls  # Return the list of URLs
+
 
 
 # Main function to test the APIs
@@ -412,6 +415,9 @@ def main():
     get_dalle_image(chosen_destination, daily_plan)
 
 if __name__ == "__main__":
-    main()
+    #main()
+    chosen_location = 'Paris'
+    daily_plan = 'Day 1: Visit the Eiffel Tower. Day 2: Visit the Louvre Museum. Day 3: Visit the Palace of Versailles. Day 4: Visit the Notre-Dame Cathedral. Day 5: Visit the Montmartre district.'
+    image_urls = get_dalle_image(chosen_location, daily_plan)
     
     

@@ -10,7 +10,7 @@ import json
 
 load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
-serpapi_key = os.getenv('serpAPI_API_KEY_2')
+serpapi_key = os.getenv('serpAPI_PI_KEY_CHENNY')
 class_api_key = os.getenv('CLASS_OPENAI_API_KEY')
 
 app = FastAPI()
@@ -61,8 +61,8 @@ async def chosen_destination(destination: str, start_date: str, end_date: str):
 async def dalle_image(destination:str, daily_plan: str):
     if daily_plan:
         try:
-            image = get_dalle_image(destination, daily_plan)
-            return {"data": image}
+            images = get_dalle_image(destination, daily_plan)
+            return {"data": images}
         except Exception as e:
             return {"error": str(e)}
     else:

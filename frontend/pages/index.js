@@ -29,19 +29,24 @@ export default function Home() {
   };
 
   const handleDestinationClick = async (destination) => {
+    setLoading(true); // Indicate loading state
+    setError(''); // Reset any previous errors
     try {
-      const response = await axios.post(`http://127.0.0.1:8000/chosen_destination_daily_plan`, {
-        destination,
-        start_date: startDate,
-        end_date: endDate
+      const response = await axios.get(`http://127.0.0.1:8000/chosen_destination_daily_plan`, {
+        params: { // Notice the use of 'params' to send query parameters correctly
+          destination: destination,
+          start_date: startDate,
+          end_date: endDate
+        }
       });
-      setDailyPlan(response.data.data);
+      setDailyPlan(response.data.data); // Assuming the response has a 'data' property that contains the daily plan
     } catch (error) {
       console.error('Failed to fetch daily plan:', error);
       setError('Failed to fetch daily plan. Please try again.');
-      setResults({});
     }
+    setLoading(false); // Reset loading state after the operation is complete
   };
+  
 
   return (
     <div className={styles.container}>
@@ -94,7 +99,7 @@ export default function Home() {
           </tr>
         </thead>
         <tbody>
-        {results && Object.keys(results).length > 0 ?
+        {results && Object.keys(results).length > 0 ? (
             Object.entries(results).map(([destination, details]) => (
             <tr key={destination} onClick={() => handleDestinationClick(destination)}>
                 <td className={styles.td}>{destination}</td>
@@ -111,21 +116,38 @@ export default function Home() {
                 </td>
                 <td className={styles.td}>${details.remaining_budget}</td>
             </tr>
-            )) :
+            ))
+        ) : (
             <tr>
             <td colSpan="4" className={styles.td}>No results found</td>
             </tr>
-        }
+        )}
         </tbody>
+
 
       </table>
 
       {dailyPlan && (
-        <div className={styles.planContainer}>
-          <h2 className={styles.h2}>Daily Plan</h2>
-          <p className={styles.text}>{dailyPlan}</p>
-        </div>
-      )}
-    </div>
-  );
+      <div className={styles.planContainer}>
+        <h2 className={styles.h2}>Daily Plan</h2>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th className={styles.th}>Day</th>
+              <th className={styles.th}>Activities</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dailyPlan.split('\n').map((plan, index) => (
+              <tr key={index}>
+                <td className={styles.td}>Day {index + 1}</td>
+                <td className={styles.td}>{plan.replace(`Day ${index + 1}: `, '')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+);
 }

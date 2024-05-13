@@ -1,89 +1,131 @@
 import { useState } from 'react';
 import axios from 'axios';
-//import styles from '../styles/Home.module.css';
+import styles from '../styles/Table.module.css';
 
 export default function Home() {
-    const [formData, setFormData] = useState({
-        start_date: '',
-        end_date: '',
-        budget: '',
-        trip_type: ''
-    });
-    const [destination, setDestination] = useState('');
-    const [showImages, setShowImages] = useState(false);
-    const [results, setResults] = useState(null);
-    const [dailyPlan, setDailyPlan] = useState('');
-    const [imageLinks, setImageLinks] = useState([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [budget, setBudget] = useState('');
+  const [tripType, setTripType] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState({});
+  const [error, setError] = useState('');
+  const [dailyPlan, setDailyPlan] = useState('');
 
-    const handleInput = (e) => {
-        setFormData({...formData, [e.target.name]: e.target.value});
-    };
+  const handleSearch = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.get(`http://127.0.0.1:8000/search_options`, {
+        params: { start_date: startDate, end_date: endDate, budget, trip_type: tripType }
+      });
+      setResults(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      setError('Failed to fetch data. Please try again.');
+    }
+    setLoading(false);
+  };
 
-    const searchOptions = async () => {
-        try {
-            const response = await axios.get('http://127.0.0.1:8000/search_options', { params: formData }); // change to localhost if running locally
-            console.log('Making request to:', `http://localhost:8000/search_options`);
+  const handleDestinationClick = async (destination) => {
+    try {
+      const response = await axios.post(`http://127.0.0.1:8000/chosen_destination_daily_plan`, {
+        destination,
+        start_date: startDate,
+        end_date: endDate
+      });
+      setDailyPlan(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch daily plan:', error);
+      setError('Failed to fetch daily plan. Please try again.');
+      setResults({});
+    }
+  };
 
-            setResults(response.data.data);
-        } catch (error) {
-            console.error('Error fetching travel options:', error);
+  return (
+    <div className={styles.container}>
+      <h1 className={styles.h1}>Plan Your Trip</h1>
+      <form onSubmit={handleSearch} className={styles.form}>
+        <input
+          className={styles.input}
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          required
+        />
+        <input
+          className={styles.input}
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          required
+        />
+        <input
+          className={styles.input}
+          type="number"
+          value={budget}
+          onChange={(e) => setBudget(e.target.value)}
+          placeholder="Budget in USD"
+          required
+        />
+        <input
+          className={styles.input}
+          type="text"
+          value={tripType}
+          onChange={(e) => setTripType(e.target.value)}
+          placeholder="Trip Type"
+          required
+        />
+        <button type="submit" disabled={loading} className={styles.button}>
+          {loading ? 'Loading...' : 'Search'}
+        </button>
+      </form>
+
+      {error && <p className={styles.text}>{error}</p>}
+
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th className={styles.th}>Destination</th>
+            <th className={styles.th}>Flight Info</th>
+            <th className={styles.th}>Hotel Info</th>
+            <th className={styles.th}>Remaining Budget</th>
+          </tr>
+        </thead>
+        <tbody>
+        {results && Object.keys(results).length > 0 ?
+            Object.entries(results).map(([destination, details]) => (
+            <tr key={destination} onClick={() => handleDestinationClick(destination)}>
+                <td className={styles.td}>{destination}</td>
+                <td className={styles.td}>
+                {details.depart_airport_code} to {details.destination_airport_code}<br />
+                Direct: {details.is_direct_flight}<br />
+                Flights: {details.flight_numbers.join(', ')}<br />
+                Duration: {details.total_duration}
+                </td>
+                <td className={styles.td}>
+                {details.hotel_name}<br />
+                Address: {details.hotel_address}<br />
+                Rating: {details.hotel_rating}
+                </td>
+                <td className={styles.td}>${details.remaining_budget}</td>
+            </tr>
+            )) :
+            <tr>
+            <td colSpan="4" className={styles.td}>No results found</td>
+            </tr>
         }
-    };
+        </tbody>
 
-    const fetchDailyPlan = async () => {
-        try {
-            const response = await axios.get(`http://127.0.0.1:8000/chosen_destination_daily_plan`, {
-                params: { destination: destination, start_date: formData.start_date, end_date: formData.end_date }
-            });
-            setDailyPlan(response.data.data);
-        } catch (error) {
-            console.error('Error fetching daily plan:', error);
-        }
-    };
+      </table>
 
-    const fetchImages = async () => {
-        try {
-            const response = await axios.get('http://127.0.0.1:8000/dalle_image', {
-                params: { destination: destination, daily_plan: dailyPlan }
-            });
-            setImageLinks(response.data.data);
-        } catch (error) {
-            console.error('Error fetching images:', error);
-        }
-    };
-
-    return (
-        <div>
-            <div>
-                <input type="text" name="start_date" value={formData.start_date} onChange={handleInput} placeholder="Start Date (YYYY-MM-DD)" />
-                <input type="text" name="end_date" value={formData.end_date} onChange={handleInput} placeholder="End Date (YYYY-MM-DD)" />
-                <input type="text" name="budget" value={formData.budget} onChange={handleInput} placeholder="Budget" />
-                <input type="text" name="trip_type" value={formData.trip_type} onChange={handleInput} placeholder="Trip Type (e.g., beach, adventure)" />
-                <button onClick={searchOptions}>Search Travel Options</button>
-            </div>
-            {results && (
-                <div>
-                    <select onChange={(e) => setDestination(e.target.value)}>
-                        {results.map((option, index) => (
-                            <option key={index} value={option.destination}>{option.destination}</option>
-                        ))}
-                    </select>
-                    <button onClick={fetchDailyPlan}>Get Daily Plan</button>
-                </div>
-            )}
-            {dailyPlan && (
-                <div>
-                    <p>{dailyPlan}</p>
-                    <button onClick={() => setShowImages(true)}>Show Images</button>
-                </div>
-            )}
-            {showImages && (
-                <div>
-                    {imageLinks.map((link, index) => (
-                        <a key={index} href={link} target="_blank" rel="noopener noreferrer">View Image {index + 1}</a>
-                    ))}
-                </div>
-            )}
+      {dailyPlan && (
+        <div className={styles.planContainer}>
+          <h2 className={styles.h2}>Daily Plan</h2>
+          <p className={styles.text}>{dailyPlan}</p>
         </div>
-    );
+      )}
+    </div>
+  );
 }

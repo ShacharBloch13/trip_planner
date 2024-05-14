@@ -8,7 +8,7 @@ from serpapi import GoogleSearch
 
 load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
-serpapi_key = os.getenv('serpAPI_API_KEY_CHENNY')
+serpapi_key = os.getenv('serpAPI_API_KEY_ROI')
 class_api_key = os.getenv('CLASS_OPENAI_API_KEY')
 
 #utility functions

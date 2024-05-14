@@ -1,100 +1,98 @@
-.td .a {
-    color: #1db954;  /* Spotify green */
-    text-decoration: none;  /* Removes underline */
-    transition: color 0.3s ease;  /* Smooth color transition for hover */
-  }
-  
- .td .a:hover {
-    color: #1ed760;  /* Lighter green on hover */
-  }/* Table.module.css */
-
+/* Assuming this CSS is part of your Table.module.css */
 
 .tableContainer {
-    background-color: #121212; /* Spotify dark background */
-    color: #ffffff;
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    border-radius: 8px;
-    width: 80%;
-    margin: auto;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  .th, .td {
-    padding: 10px 15px;
-    text-align: left;
-    border-bottom: 1px solid #282828;
-  }
-  
-  .th {
-    background-color: #1db954; /* Spotify green for headers */
-    color: #000000;
-  }
-  
-  .tr:hover {
-    background-color: #333333; /* Slight hover effect */
-  }
-  
-  .input {
-    padding: 8px;
-    border-radius: 4px;
-    border: none;
-    width: 70%;
-  }
-  
-  .button {
-    background-color: #1db954; /* Spotify green for the button */
-    color: #ffffff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  .button:hover {
-    background-color: #1ed760;
-  }
-  
-  .form {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-  
-  .h1 {
-    text-align: center;
-    color: #1db954;
-  }
-  
-  .text {
-    text-align: center;
-  }
+  background-color: #2D2C40; /* Dark purple background */
+  color: #E0D7FF; /* Light purple text for good readability */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 20px;
+  border-radius: 8px;
+  margin: auto;
+  width: 80%;
+}
 
-  /* Recommendation section */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.th, .td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #443f56; /* Slightly lighter purple for subtle contrast */
+  text-align: left;
+}
+
+.th {
+  background-color: #423B53; /* Slightly darker shade of header */
+  color: #FFFFFF; /* White color for headers for contrast */
+}
+
+.tr:hover {
+  background-color: #342f47; /* Darker purple for hover effects */
+  cursor: pointer;
+}
+
+.input, .button {
+  padding: 10px 15px;
+  margin: 10px 5px;
+  background-color: #403D58; /* Dark purple for input fields and buttons */
+  border: 1px solid #5C5877; /* Slightly lighter purple border */
+  color: #FFFFFF;
+  border-radius: 4px;
+}
+
+.button {
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.button:hover {
+  background-color: #5C5877; /* Lighter purple when hovering over buttons */
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.text {
+  color: #FFC0CB; /* Adding a slight pinkish tone for error messages or notices */
+  font-size: 1.1em;
+}
+
+.h1 {
+  text-align: center;
+  color: #FFD700; /* Golden color for the main title to stand out */
+}
+
 .recommendationContainer {
-    margin-top: 20px;
-    padding: 10px;
-    background-color: #f1f1f1;
-    border-radius: 8px;
-    text-align: center;
-  }
-  
-  .h2 {
-    margin-bottom: 10px;
-    color: #333;
-  }
-  
-  .text {
-    font-size: 18px;
-    color: #666;
-  }
+  background-color: #302B40;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
 
+.recommendationLink {
+  color: #8A2BE2; /* Vivid purple for clickable links */
+  text-decoration: none;
+}
 
-  
+.recommendationLink:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: #ff6b81; /* Light red color for errors to ensure visibility */
+}
+
+/* Add global styling to adjust overall layout aesthetics */
+.body {
+  background-color: #1B1929; /* Very dark purple for the body background */
+  color: #E0D7FF; /* Light purple text color */
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}

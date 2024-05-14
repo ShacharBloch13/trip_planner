@@ -10,7 +10,7 @@ import json
 
 load_dotenv()
 api_key = os.getenv('TRIP_PLANNER_API_KEY')
-serpapi_key = os.getenv('serpAPI_PI_KEY_ROI')
+serpapi_key = os.getenv('serpAPI_PI_KEY_MIKE')
 class_api_key = os.getenv('CLASS_OPENAI_API_KEY')
 
 app = FastAPI()

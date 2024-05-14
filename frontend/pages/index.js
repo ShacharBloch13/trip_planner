@@ -121,29 +121,25 @@ export default function Home() {
                     </tr>
                 </thead>
                 <tbody>
-                {results && Object.keys(results).length > 0 ? (
+                    {results && Object.keys(results).length > 0 ? (
                         Object.entries(results).map(([destination, details]) => (
-                        <tr key={destination} onClick={() => handleDestinationClick(destination)}>
-                                <td className={styles.td}>{destination}</td>
-                                <td className={styles.td}>
-                                {details.depart_airport_code} to {details.destination_airport_code}<br />
+                            <tr key={destination} onClick={() => handleDestinationClick(destination)}>
+                                <td className={styles.td} style={{ cursor: 'pointer', color: '#61dafb' }}>{destination}</td>
+                                <td className={styles.td}>{details.depart_airport_code} to {details.destination_airport_code}<br />
                                 Direct: {details.is_direct_flight}<br />
                                 Flights: {details.flight_numbers.join(', ')}<br />
-                                Duration: {details.total_duration}
-                                </td>
-                                <td className={styles.td}>
-                                {details.hotel_name}<br />
+                                Duration: {details.total_duration}</td>
+                                <td className={styles.td}>{details.hotel_name}<br />
                                 Address: {details.hotel_address}<br />
-                                Rating: {details.hotel_rating}
-                                </td>
+                                Rating: {details.hotel_rating}</td>
                                 <td className={styles.td}>${details.remaining_budget}</td>
-                        </tr>
+                            </tr>
                         ))
-                ) : (
+                    ) : (
                         <tr>
-                        <td colSpan="4" className={styles.td}>No results found</td>
+                            <td colSpan="4" className={styles.td}>No results found</td>
                         </tr>
-                )}
+                    )}
                 </tbody>
 
 

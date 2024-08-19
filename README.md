@@ -21,7 +21,7 @@ This project is a full-stack application developed with FastAPI and Next.js, des
 # Installation
 Clone:
 ```
-git clone https://github.com/yourusername/tripplanner.git
+git clone https://github.com/SיhacharBloch13/tripplanner.git
 cd tripplanner
 ```
 # Backend setup
